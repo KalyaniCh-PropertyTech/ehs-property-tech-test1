@@ -1,0 +1,32 @@
+name: Promote Dev to Test
+
+on:
+  push:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Create PR from dev → test
+        uses: repo-sync/pull-request@v2
+        with:
+          destination_branch: "test"
+          source_branch: "dev"
+          pr_title: "Auto: Promote Dev to Test"
+          pr_body: "Automatically generated PR moving code from dev to test"
+
+      - name: Auto merge PR
+        uses: pascalgn/automerge-action@v0.15.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_LABELS: ""
+          MERGE_METHOD: merge
