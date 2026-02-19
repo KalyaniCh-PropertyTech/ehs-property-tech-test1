@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - dev
-  workflow_dispatch:    
+  workflow_dispatch:
+
 permissions:
   contents: write
   pull-requests: write
@@ -16,17 +17,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Create PR from dev → test
+      # 1️⃣ Create a real PR from dev → test
+      - name: Create PR dev → test
         uses: repo-sync/pull-request@v2
         with:
-          destination_branch: "test"
           source_branch: "dev"
+          destination_branch: "test"
           pr_title: "Auto: Promote Dev to Test"
           pr_body: "Automatically generated PR moving code from dev to test"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Auto merge PR
+      # 2️⃣ Add an 'automerge' label (needed for auto merge logic)
+      - name: Add automerge label
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: automerge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3️⃣ Auto-merge the PR when mergeable
+      - name: Automerge PR
         uses: pascalgn/automerge-action@v0.15.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_LABELS: ""
+          MERGE_LABELS: "automerge"
           MERGE_METHOD: merge
+          MERGE_COMMIT_MESSAGE_TEMPLATE: "Auto-merged PR #{{PR_NUMBER}} from dev to test"
