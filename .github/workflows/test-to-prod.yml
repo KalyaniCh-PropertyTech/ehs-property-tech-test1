@@ -1,0 +1,50 @@
+name: Promote Test to Prod
+
+on:
+  push:
+    branches:
+      - test
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 1️⃣ Create or update the PR from test → prod and capture PR number
+      - name: Create PR test → prod
+        id: create_pr
+        uses: repo-sync/pull-request@v2
+        with:
+          source_branch: "test"
+          destination_branch: "prod"
+          pr_title: "Auto: Promote Test to Prod"
+          pr_body: "Automatically generated PR moving code from test to prod"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2️⃣ Add automerge label to this PR
+      - name: Add automerge label
+        if: ${{ steps.create_pr.outputs.pr_number != '' }}
+        uses: actions-ecosystem/action-add-labels@v1
+        with:
+          labels: automerge
+          number: ${{ steps.create_pr.outputs.pr_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3️⃣ Auto-merge this PR using PR number
+      - name: Automerge PR
+        if: ${{ steps.create_pr.outputs.pr_number != '' }}
+        uses: pascalgn/automerge-action@v0.15.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST: ${{ steps.create_pr.outputs.pr_number }}
+          MERGE_LABELS: "automerge"
+          MERGE_METHOD: merge
+          MERGE_COMMIT_MESSAGE_TEMPLATE: "Auto-merged PR #{{PR_NUMBER}} from test to prod"
