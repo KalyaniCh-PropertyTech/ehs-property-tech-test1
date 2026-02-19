@@ -15,10 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 1️⃣ Create a real PR from dev → test
+      # 1) Create or update a PR from dev → test and capture its number
       - name: Create PR dev → test
+        id: create_pr
         uses: repo-sync/pull-request@v2
         with:
           source_branch: "dev"
@@ -27,19 +28,23 @@ jobs:
           pr_body: "Automatically generated PR moving code from dev to test"
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2️⃣ Add an 'automerge' label (needed for auto merge logic)
+      # 2) Add an 'automerge' label to the PR we just created
       - name: Add automerge label
+        if: ${{ steps.create_pr.outputs.pr_number != '' }}
         uses: actions-ecosystem/action-add-labels@v1
         with:
           labels: automerge
+          number: ${{ steps.create_pr.outputs.pr_number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3️⃣ Auto-merge the PR when mergeable
+      # 3) Auto-merge the PR using its explicit number
       - name: Automerge PR
+        if: ${{ steps.create_pr.outputs.pr_number != '' }}
         uses: pascalgn/automerge-action@v0.15.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST: ${{ steps.create_pr.outputs.pr_number }}
           MERGE_LABELS: "automerge"
           MERGE_METHOD: merge
           MERGE_COMMIT_MESSAGE_TEMPLATE: "Auto-merged PR #{{PR_NUMBER}} from dev to test"
